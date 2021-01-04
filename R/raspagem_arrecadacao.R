@@ -1,18 +1,16 @@
-#' Baixa os arquivos a tabela json
+#' @title Downloading data from Ibama database
 #'
-#' @param path pasta onde salvarei a tabela json
+#' @param path Path where the jason files will be saved.
+#'
+#' @importFrom dplyr %>%
 #'
 #' @export
-
-library(magrittr)
 
 # Criar uma funcao para ler os arquivos
 
 obter_arquivos_arrec <- function(uf, path) {
 
-  `%>%` <- magrittr::`%>%`  #  carregando apenas a funcao do pacote
-
-  uf_links <-
+    uf_links <-
     glue::glue(
       "http://dadosabertos.ibama.gov.br/dados/SICAFI/{uf}/Arrecadacao/arrecadacaobenstutelados.json"
     )
@@ -36,7 +34,6 @@ obter_arquivos_arrec <- function(uf, path) {
 
 }
 
-
 # Fazer um vetor com todas as siglas de UF
 ufs <- unique(geobr::grid_state_correspondence_table$code_state)
 
@@ -44,26 +41,9 @@ ufs <- unique(geobr::grid_state_correspondence_table$code_state)
 df_arrecadacao <- purrr::map_dfr(ufs, obter_arquivos_arrec, path = "out.arrec/")
 
 # convertendo dados para tibble
-df_arrecadacao_2 <- df_arrecadacao$data %>% tibble::as_tibble()
+df_arrecadacao <- df_arrecadacao$data %>% tibble::as_tibble()
+
+# Salvando dataframe, jogando na pasta Ibamam
+save(df_arrecadacao, file = "df_arrecadacao.rda")
 
 
-# ajustando variaveis de Data para o formato correto
-library(tidyverse)
-df_arrec <- df_arrecadacao_2 %>%
-  mutate(dataAuto = lubridate::dmy(dataAuto)) %>%
-  mutate(dataPagamento = lubridate::dmy(dataPagamento)) %>%
-  mutate(tipoInfracao = as.factor(tipoInfracao)) %>%
-  mutate(uf = as.factor(uf)) %>%
-  mutate(tipoAuto = as.factor(tipoAuto)) %>%
-  mutate(moeda = as.factor(moeda)) %>%
-  mutate(statusDebito = as.factor(statusDebito)) %>%
-  mutate(enquadramentoLegal = as.factor(enquadramentoLegal)) %>%
-  mutate(across(where(is.character), str_remove_all, pattern = fixed("  "))) %>%
-  mutate(enquadramentoJuridico = as.factor(if_else(nchar(cpfCnpj) <= 14,"CPF","CNPJ")))
-
-
-df_arrec %>% glimpse()
-
-## salvando em csv
-# write.csv(df_arrec, file = "df_arrec.csv",
-# sep = ",", fileEncoding = "Latin1")
